@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provider enrollment | Bluewater Health Plan (sample)</title><link rel="stylesheet" href="portal.css">
+<style>header{background:#00695c}button{background:#00695c}</style></head>
+<body>
+<div class="sample">Sample portal for the SafeFill demo. Nothing on this page is sent anywhere.</div>
+<header><b>Bluewater Health Plan</b><small>Provider enrollment application</small></header>
+<main>
+<form id="form" autocomplete="off">
+  <fieldset><legend>Provider</legend>
+    <div class="row">
+      <div class="f"><label for="pname">Provider name</label><input id="pname" name="provider_name"></div>
+      <div class="f"><label for="dob">Date of birth</label><input id="dob" name="dob" placeholder="MM/DD/YYYY" maxlength="10"></div>
+      <div class="f"><label for="npi-i">Individual NPI</label><input id="npi-i" name="npi_individual"></div>
+      <div class="f"><label for="npi-g">Group NPI</label><input id="npi-g" name="npi_group"></div>
+      <div class="f"><label for="lic">License number</label><input id="lic" name="license_no" maxlength="6"></div>
+      <div class="f"><label for="lic-state">License state</label>
+        <select id="lic-state" name="license_state"><option value="">Select</option><option value="CA">CA</option><option value="NV">NV</option></select></div>
+      <div class="f"><label for="email">Email address</label><input id="email" name="email" type="email"></div>
+      <div style="display:none" class="f"><label for="email2">Email address</label><input id="email2" name="email_legacy"></div>
+      <div class="f"><label for="ph-o">Office phone</label><input id="ph-o" name="phone_office" type="tel"></div>
+      <div class="f"><label for="ph-m">Mobile phone</label><input id="ph-m" name="phone_mobile" type="tel"></div>
+    </div>
+  </fieldset>
+  <fieldset><legend>Practice location</legend>
+    <div class="row">
+      <div class="f"><label for="street">Street address</label><input id="street" name="street"></div>
+      <div class="f"><label for="city">City</label><input id="city" name="city"></div>
+      <div class="f"><label for="state">State</label>
+        <select id="state" name="state"><option value="">Select</option><option value="CA">California</option><option value="NV">Nevada</option></select></div>
+      <div class="f"><label for="zip">ZIP code</label><input id="zip" name="zip" value="00000" readonly title="Filled from the address lookup"></div>
+    </div>
+  </fieldset>
+  <button type="submit">Save and continue</button><span id="submitted"></span>
+</form>
+</main>
+<script>
+  window.__submits = 0;
+  document.getElementById('form').addEventListener('submit', (e) => { e.preventDefault(); window.__submits++; document.getElementById('submitted').textContent = 'Submitted (sample only)'; });
+</script>
+</body></html>

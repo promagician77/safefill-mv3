@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Form-fill extension: technical plan and working spike</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;500&family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#172033"/></marker>
+    <marker id="arr-skip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#B4590A"/></marker>
+    <marker id="arr-stop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#B42318"/></marker>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="top-row">
+    <div>
+      <div class="doc-title">Form-fill extension: technical plan and working spike</div>
+      <div class="doc-sub">Prepared by James for your Manifest V3 extension post, October 2026</div>
+    </div>
+    <div class="top-links">
+      <a class="btn quiet" href="files/safefill_timeline.xlsx" download>Timeline (.xlsx)</a>
+      <a class="btn quiet" href="release/safefill-0.1.0.zip" download>Extension build (.zip)</a>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="t-overview" aria-controls="p-overview" aria-selected="true">Overview</button>
+    <button role="tab" id="t-demo" aria-controls="p-demo" aria-selected="false" tabindex="-1">Fill demo</button>
+    <button role="tab" id="t-safety" aria-controls="p-safety" aria-selected="false" tabindex="-1">Safety layer</button>
+    <button role="tab" id="t-flow" aria-controls="p-flow" aria-selected="false" tabindex="-1">Data flow</button>
+    <button role="tab" id="t-release" aria-controls="p-release" aria-selected="false" tabindex="-1">Release pipeline</button>
+    <button role="tab" id="t-ci" aria-controls="p-ci" aria-selected="false" tabindex="-1">CI trust</button>
+    <button role="tab" id="t-plan" aria-controls="p-plan" aria-selected="false" tabindex="-1">Plan</button>
+    <button role="tab" id="t-questions" aria-controls="p-questions" aria-selected="false" tabindex="-1">Assumptions and questions</button>
+  </nav>
+</header>
+
+<main>
+<!-- ================================================================ OVERVIEW -->
+<section class="panel" id="p-overview" role="tabpanel" aria-labelledby="t-overview">
+  <h1>Exactly one match, or nothing gets filled.</h1>
+  <p class="lead">A working spike of your extension and its release pipeline, built before any contract, aimed at the two parts your post says matter most: the safety layer, and a release you can prove came from your source.</p>
+
+  <div class="agents">
+    <div>
+      <h2>Built before: Agents.ai</h2>
+      <p>A Manifest V3 extension that operates on any third-party website: a React side panel, a service worker gateway, and content scripts that find and act on elements in pages they have never seen. The FastAPI backend plans actions over the Chrome DevTools Protocol and reads only what changed in the page, which cut page payloads by 70 to 95%.</p>
+      <p class="muted small">The video shows it working on live sites. The board shows how the backend, worker and content scripts fit together.</p>
+    </div>
+    <div class="links">
+      <a class="btn" href="https://www.loom.com/share/f4db90efe9a543d1b1af7bb5fef99fac" target="_blank" rel="noopener">Watch the Agents.ai demo</a>
+      <a class="btn quiet" href="https://www.figma.com/board/oJAVPwwl6luI0YNjCJZ6nC/Agents.ai-Backend-Logic?t=jz2DRb0TdaD6x8XS-0" target="_blank" rel="noopener">Open the backend architecture</a>
+    </div>
+  </div>
+
+  <div class="block contrast">
+    <div>
+      <h3>What carries over to your extension</h3>
+      <ul>
+        <li>Finding the right field on sites I don't control: labels, aria references, names, shadow DOM, pages that re-render.</li>
+        <li>Writing into React and Angular forms so the value sticks, which a plain <code>.value =</code> does not.</li>
+        <li>The MV3 service worker lifecycle: Chrome stops idle workers, so nothing important can live there by accident.</li>
+        <li>On-demand injection and the hand-off between popup, worker and page.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>What this extension does the opposite of</h3>
+      <ul>
+        <li>Agents.ai kept sessions and recordings in Chrome storage. Here the <code>storage</code> permission is absent, so the API does not exist at runtime.</li>
+        <li>Agents.ai used <code>debugger</code> and <code>tabs</code>. Here: <code>activeTab</code> and <code>scripting</code>, nothing else.</li>
+        <li>Agents.ai logged steps and screenshots for the agent. Here nothing is logged, and the report carries no values.</li>
+        <li>Agents.ai clicked and navigated on its own. Here nothing is clicked or submitted; the professional does that.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="block">
+    <h2>Where the extension sits in your system</h2>
+    <figure class="figure" style="margin:0">
+      <svg class="d" viewBox="0 -14 1200 394" role="img" aria-label="System map: professional, web app, AWS backend, extension, third-party portal, Chrome Web Store">
+        <path class="ln" d="M95 150V14H1060V30" marker-end="url(#arr)"/>
+        <text class="m" x="578" y="6" text-anchor="middle">the professional reviews every field and submits the form herself</text>
+        <rect class="box" x="20" y="150" width="150" height="80" rx="10"/>
+        <text class="b" x="95" y="185" text-anchor="middle">Licensed</text><text class="b" x="95" y="205" text-anchor="middle">professional</text>
+        <rect class="box" x="250" y="30" width="250" height="96" rx="10"/>
+        <text class="b" x="268" y="62">Web app</text><text class="m" x="268" y="84">React on Cognito</text><text class="m" x="268" y="104">front-end contractor</text>
+        <rect class="box" x="250" y="254" width="250" height="96" rx="10"/>
+        <text class="b" x="268" y="286">Your backend</text><text class="m" x="268" y="308">records, tickets, values API</text><text class="m" x="268" y="328">AWS contractor</text>
+        <rect class="box-ink" x="590" y="132" width="260" height="116" rx="12"/>
+        <text class="b" x="608" y="166">SafeFill extension</text><text class="m" x="608" y="190">Manifest V3, this job</text><text class="m" x="608" y="210">activeTab + scripting only</text><text class="m" x="608" y="230">stores nothing, logs nothing</text>
+        <rect class="box" x="940" y="30" width="240" height="96" rx="10"/>
+        <text class="b" x="958" y="62">Third-party portal</text><text class="m" x="958" y="84">state board, payer, network</text><text class="m" x="958" y="104">never trusted or submitted</text>
+        <rect class="box" x="940" y="254" width="240" height="96" rx="10"/>
+        <text class="b" x="958" y="286">Chrome Web Store</text><text class="m" x="958" y="308">published from a signed tag</text><text class="m" x="958" y="328">checked after publishing</text>
+        <path class="ln" d="M170 175L248 110" marker-end="url(#arr)"/><text class="s" x="180" y="204">opens a record</text>
+        <path class="ln" d="M330 126V252" marker-end="url(#arr)"/><text class="s" x="340" y="196">1. create ticket</text>
+        <path class="ln" d="M500 96L588 158" marker-end="url(#arr)"/><text class="s" x="528" y="100">2. ticket</text>
+        <path class="ln" d="M590 222L502 290" marker-end="url(#arr)"/><text class="s" x="552" y="294">3. values</text>
+        <path class="ln" d="M850 158L938 96" marker-end="url(#arr)"/><text class="s" x="890" y="112" text-anchor="end">4. fill or skip</text>
+        <path class="ln" d="M938 290L852 222" marker-end="url(#arr)"/><text class="s" x="900" y="280" text-anchor="end">install, update</text>
+      </svg>
+      <figcaption>Integration points I would agree in writing with the other two contractors in week one: the ticket API (1, 3) and the message the web app sends the extension (2).</figcaption>
+    </figure>
+  </div>
+
+  <dl class="block facts">
+    <div><dt>Estimate</dt><dd>72 hours<small>9 working days</small></dd></div>
+    <div><dt>Rate</dt><dd>$75 / hour</dd></div>
+    <div><dt>Fixed price</dt><dd>$5,400<small>acceptance fixes included</small></dd></div>
+    <div><dt>Working build</dt><dd>Thu, Oct 15</dd></div>
+    <div><dt>Hard deadline</dt><dd>Sun, Nov 1<small>17 days of buffer, not plan</small></dd></div>
+  </dl>
+
+  <div class="block">
+    <h2>What is real in this spike, and what isn't yet</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Part</th><th>State</th><th>Proof</th></tr></thead>
+        <tbody>
+          <tr><td>Fill engine (exactly one match or skip)</td><td><span class="pill pass">Working</span></td><td>18 unit tests; runs live in the Fill demo tab; browser tests on three portals with the exact release files</td></tr>
+          <tr><td>Extension: worker, popup, ticket flow</td><td><span class="pill pass">Working</span></td><td>Browser test of the full chain: web app, ticket, backend, fill, report. <code>chrome.storage</code> confirmed absent at runtime</td></tr>
+          <tr><td>Policy gate: no storage, logging or submission</td><td><span class="pill pass">Working</span></td><td>10 tests, each one injects a violation and expects the gate to fail</td></tr>
+          <tr><td>Deterministic build and hash list</td><td><span class="pill pass">Working</span></td><td>Two builds are byte-identical; a Windows (CRLF) checkout gives the same hashes</td></tr>
+          <tr><td>Signed-tag release gate</td><td><span class="pill pass">Working</span></td><td>5 tests with real SSH-signed git tags: good tag, unknown key, unsigned, late change, wrong version</td></tr>
+          <tr><td>Published-package verifier</td><td><span class="pill pass">Working on store-shaped packages</span></td><td>6 tests. Runs for real once your Web Store item exists</td></tr>
+          <tr><td>CI workflows: PR, staging, release</td><td><span class="pill unchanged">Written</span></td><td>Actions pinned to commit SHAs. Run once the repo and environments exist</td></tr>
+          <tr><td>Web Store upload and publish</td><td><span class="pill unchanged">Written</span></td><td>Chrome Web Store API v2 with keyless auth. Needs your publisher account and Google Cloud project</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ DEMO -->
+<section class="panel" id="p-demo" role="tabpanel" aria-labelledby="t-demo" hidden>
+  <h2>Run the real engine on three sample portals</h2>
+  <p>These are the same two files the extension injects into a tab, served from its build folder. Pick a portal and fill it. Green outlines show what was filled; dashed amber outlines show fields it refused to choose between.</p>
+  <div class="demo">
+    <div class="side">
+      <div class="choices" id="portal-choices">
+        <button class="choice" data-portal="portal-a" aria-pressed="true"><b>State Board renewal</b><span>A clean form. Every value has one home.</span></button>
+        <button class="choice" data-portal="portal-b" aria-pressed="false"><b>Payer enrollment</b><span>Two NPIs, two phones, a short field, a read-only ZIP.</span></button>
+        <button class="choice" data-portal="portal-c" aria-pressed="false"><b>App-style credentialing</b><span>Re-renders like React, shadow DOM, one field fits two values.</span></button>
+      </div>
+      <div class="actions">
+        <button class="btn" id="run-fill" type="button">Fill from record</button>
+        <button class="btn quiet" id="reset-portal" type="button">Reset portal</button>
+      </div>
+      <table class="record" aria-label="Demo record">
+        <caption class="muted small" style="text-align:left;padding:0 0 6px">Record your backend returns (demo)</caption>
+        <tbody id="record-rows"></tbody>
+      </table>
+    </div>
+    <div class="frame">
+      <div class="frame-bar"><span class="addr" id="frame-addr">/portals/portal-a.html</span></div>
+      <iframe id="portal-frame" title="Sample portal" src="portals/portal-a.html"></iframe>
+    </div>
+    <div class="side">
+      <div class="ledger-head"><h3>What the extension reports</h3></div>
+      <p class="muted small" id="ledger-summary">Press Fill from record to run it.</p>
+      <ol class="ledger" id="ledger"><li class="empty">No run yet.</li></ol>
+      <p class="muted small" style="margin-top:12px">This is the same object the popup receives. It carries statuses, reasons and candidate counts, never a value.</p>
+    </div>
+  </div>
+
+  <div class="real-ext">
+    <div>
+      <h3>Try the real extension in Chrome</h3>
+      <ol class="small">
+        <li>Download the <a href="release/safefill-0.1.0.zip" download>extension build</a> and unzip it.</li>
+        <li>Open <code>chrome://extensions</code>, turn on Developer mode, choose Load unpacked, pick the folder.</li>
+        <li>Open the <a href="app.html" target="_blank" rel="noopener">demo web app</a> and choose a portal. It sends the extension a 2-minute ticket and opens the portal.</li>
+        <li>On the portal tab, click the SafeFill icon, then Fill this page.</li>
+      </ol>
+    </div>
+    <div>
+      <h3>What to look for</h3>
+      <p class="small">Open the payer portal from the web app, then switch to a different tab and press Fill: it refuses, because the ticket is bound to the portal's site. Wait two minutes and press Fill: the request has expired. Inspect the service worker: <code>chrome.storage</code> is undefined.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ SAFETY -->
+<section class="panel" id="p-safety" role="tabpanel" aria-labelledby="t-safety" hidden>
+  <h2>How a value finds its field, or doesn't</h2>
+  <p>Plausibility is deliberately broad and acceptance is deliberately narrow. A wide net means a near-miss shows up as a second candidate and turns into a skip, instead of a guess.</p>
+  <figure class="figure" style="margin:16px 0 0">
+    <svg class="d" viewBox="0 0 1200 270" role="img" aria-label="Matching pipeline with skip exits">
+        <rect class="box" x="9" y="20" width="182" height="104" rx="10"/><text class="b" x="21" y="48">Discover fields</text>
+        <text class="m" x="21" y="72">labels, aria, hints</text>
+        <text class="m" x="21" y="90">names, autocomplete</text>
+        <text class="m" x="21" y="108">open shadow DOM</text>
+        <rect class="box" x="209" y="20" width="182" height="104" rx="10"/><text class="b" x="221" y="48">Candidates</text>
+        <text class="m" x="221" y="72">visible, editable</text>
+        <text class="m" x="221" y="90">has all words of</text>
+        <text class="m" x="221" y="108">a rule phrase</text>
+        <rect class="box-ink" x="409" y="20" width="182" height="104" rx="10"/><text class="b" x="421" y="48">One-to-one check</text>
+        <text class="m" x="421" y="72">exactly one candidate</text>
+        <text class="m" x="421" y="90">and it fits no</text>
+        <text class="m" x="421" y="108">other value</text>
+        <rect class="box" x="609" y="20" width="182" height="104" rx="10"/><text class="b" x="621" y="48">Value checks</text>
+        <text class="m" x="621" y="72">length, pattern, type</text>
+        <text class="m" x="621" y="90">options, date format</text>
+        <text class="m" x="621" y="108">empty and editable</text>
+        <rect class="box" x="809" y="20" width="182" height="104" rx="10"/><text class="b" x="821" y="48">Write, read back</text>
+        <text class="m" x="821" y="72">native value setter</text>
+        <text class="m" x="821" y="90">input + change events</text>
+        <text class="m" x="821" y="108">no submit, no click</text>
+        <rect class="box-fill" x="1009" y="20" width="182" height="104" rx="10"/><text class="b" x="1021" y="48">Report</text>
+        <text class="s" x="1021" y="72">statuses, reasons,</text>
+        <text class="s" x="1021" y="90">candidate counts</text>
+        <text class="g" x="1021" y="108">never a value</text>
+        <path class="ln" d="M191 72H207" marker-end="url(#arr)"/><path class="ln" d="M391 72H407" marker-end="url(#arr)"/><path class="ln" d="M591 72H607" marker-end="url(#arr)"/><path class="ln" d="M791 72H807" marker-end="url(#arr)"/><path class="ln" d="M991 72H1007" marker-end="url(#arr)"/>
+        <path class="ln-skip" d="M300 124V164" marker-end="url(#arr-skip)"/><rect class="box-skip" x="209" y="166" width="182" height="86" rx="8"/><text class="o" x="221" y="190">Skip: no match</text><text class="m" x="221" y="210">no field is plausible</text><path class="ln-skip" d="M500 124V164" marker-end="url(#arr-skip)"/><rect class="box-skip" x="409" y="166" width="182" height="86" rx="8"/><text class="o" x="421" y="190">Skip: ambiguous</text><text class="m" x="421" y="210">2+ candidates, or one</text><text class="m" x="421" y="228">field two values share</text><path class="ln-skip" d="M700 124V164" marker-end="url(#arr-skip)"/><rect class="box-skip" x="609" y="166" width="182" height="86" rx="8"/><text class="o" x="621" y="190">Skip: unsafe write</text><text class="m" x="621" y="210">too long or rejected</text><text class="m" x="621" y="228">already filled or</text><text class="m" x="621" y="246">read-only; vague date</text><path class="ln-skip" d="M900 124V164" marker-end="url(#arr-skip)"/><rect class="box-skip" x="809" y="166" width="182" height="86" rx="8"/><text class="o" x="821" y="190">Skip: page cleared it</text><text class="m" x="821" y="210">reported, never retried</text>
+        <path class="ln-skip" d="M991 209H1100V126" marker-end="url(#arr-skip)"/><text class="o" x="1010" y="232">every skip is</text><text class="o" x="1010" y="250">reported with why</text>
+      </svg>
+  </figure>
+
+  <div class="block">
+    <h2>Decision rules</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Situation on the page</th><th>What SafeFill does</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>One field labeled NPI</td><td><span class="pill filled">Fills it</span></td><td>Exactly one plausible home, and it fits nothing else</td></tr>
+          <tr><td>Individual NPI and Group NPI</td><td><span class="pill skipped">Skips NPI</span></td><td>Two plausible fields. Choosing would be a guess</td></tr>
+          <tr><td>One field labeled "Contact phone or email"</td><td><span class="pill skipped">Skips both</span></td><td>One field, two plausible values. Uniqueness has to hold both ways</td></tr>
+          <tr><td>A visible Email field plus a hidden duplicate</td><td><span class="pill filled">Fills the visible one</span></td><td>Hidden fields are not candidates (a spec call I'd confirm with you)</td></tr>
+          <tr><td>License field allows 6 characters, value has 9</td><td><span class="pill skipped">Skips</span></td><td>The browser would cut it silently; a wrong license number is worse than a blank one</td></tr>
+          <tr><td>Date field with placeholder MM/DD/YYYY</td><td><span class="pill filled">Fills 03/22/1984</span></td><td>The field states its format, so the conversion is not a guess</td></tr>
+          <tr><td>Date field with no stated format</td><td><span class="pill skipped">Skips</span></td><td>03/04 means March in one place and April in another</td></tr>
+          <tr><td>Field already holds something</td><td><span class="pill skipped">Leaves it alone</span></td><td>Never overwrite what the professional or the portal entered</td></tr>
+          <tr><td>Read-only or disabled field</td><td><span class="pill skipped">Skips</span></td><td>The portal decided that value</td></tr>
+          <tr><td>Password, checkbox, file, radio</td><td>Never a candidate</td><td>Not free-text fields; a password is never touched</td></tr>
+          <tr><td>Backend sends a key the extension has no rule for, or a malformed value</td><td><span class="pill skipped">Skips</span></td><td>Matching rules ship inside the signed extension. The backend sends values; it cannot change behavior</td></tr>
+          <tr><td>Fields inside an embedded frame</td><td>Counted and reported, not filled</td><td>Out of scope unless your portals need it (see assumptions)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="block">
+    <h2>Four layers keep data from staying or leaving</h2>
+    <p>"Stores nothing, logs nothing" is not one promise in the code. It is four separate barriers, and each has its own test.</p>
+    <div class="layers">
+      <div class="layer"><div><b>Manifest</b><span class="muted">what Chrome allows</span></div><div>No <code>storage</code> permission, so <code>chrome.storage</code> is undefined. No static content scripts, no web-accessible resources, one host permission.</div><div class="muted">Browser test reads <code>typeof chrome.storage</code> in the live worker: undefined.</div></div>
+      <div class="layer"><div><b>Content Security Policy</b><span class="muted">where data can go</span></div><div><code>connect-src</code> is locked to your backend. Even a bug cannot send a value anywhere else.</div><div class="muted">Browser test: a fetch to another origin is blocked before any request leaves.</div></div>
+      <div class="layer"><div><b>Policy gate in CI</b><span class="muted">what the code may contain</span></div><div>Fails the build on storage APIs, logging, beacons, sockets, form submission, synthetic clicks or keys, dynamic code, extra network calls, extra permissions.</div><div class="muted">10 tests inject each violation and expect a failure.</div></div>
+      <div class="layer"><div><b>Report shape</b><span class="muted">what leaves the page</span></div><div>The engine's report has no value fields. The worker rebuilds it from an allowlist of fields and drops anything else. Errors travel as codes, never messages.</div><div class="muted">Tests assert that no record value appears in any report or in the popup.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ FLOW -->
+<section class="panel" id="p-flow" role="tabpanel" aria-labelledby="t-flow" hidden>
+  <h2>One fill, from click to review</h2>
+  <p>The web app never hands values to the extension. It hands over a short-lived ticket; the extension trades it with your backend only after the professional presses Fill on the matching site.</p>
+  <figure class="figure" style="margin:16px 0 0">
+    <svg class="d" viewBox="0 0 1200 600" role="img" aria-label="Sequence diagram of one fill">
+      <g>
+        <rect class="box" x="10" y="8" width="180" height="44" rx="8"/><text class="b" x="100" y="36" text-anchor="middle">Professional</text>
+        <rect class="box" x="240" y="8" width="180" height="44" rx="8"/><text class="b" x="330" y="36" text-anchor="middle">Web app</text>
+        <rect class="box-ink" x="480" y="8" width="180" height="44" rx="8"/><text class="b" x="570" y="36" text-anchor="middle">SafeFill worker</text>
+        <rect class="box" x="710" y="8" width="180" height="44" rx="8"/><text class="b" x="800" y="36" text-anchor="middle">Your backend</text>
+        <rect class="box" x="970" y="8" width="180" height="44" rx="8"/><text class="b" x="1060" y="36" text-anchor="middle">Portal tab</text>
+        <path class="life" d="M100 52V592M330 52V592M570 52V592M800 52V592M1060 52V592"/>
+      </g>
+      <rect class="band-ticket" x="563" y="210" width="14" height="180" rx="3"/>
+      <text class="m" x="552" y="342" text-anchor="end">ticket in memory,</text><text class="m" x="552" y="358" text-anchor="end">2 minutes at most</text>
+      <rect class="band-fill" x="563" y="428" width="14" height="84" rx="3"/>
+      <text class="g" x="552" y="466" text-anchor="end">values exist only here,</text><text class="g" x="552" y="482" text-anchor="end">for one fill</text>
+      <g>
+        <path class="ln" d="M100 90H328" marker-end="url(#arr)"/><text class="s" x="214" y="82" text-anchor="middle">Fill on portal</text>
+        <path class="ln" d="M330 130H798" marker-end="url(#arr)"/><text class="s" x="564" y="122" text-anchor="middle">create ticket for this record and portal</text>
+        <path class="ret" d="M800 170H332" marker-end="url(#arr)"/><text class="s" x="564" y="162" text-anchor="middle">ticket: expires in 2 minutes, single use</text>
+        <path class="ln" d="M330 210H561" marker-end="url(#arr)"/><text class="s" x="446" y="202" text-anchor="middle">ticket + portal URL</text>
+        <path class="ln" d="M330 250H1058" marker-end="url(#arr)"/><text class="s" x="820" y="242" text-anchor="middle">opens the portal (deep link)</text>
+        <path class="ln" d="M100 300H561" marker-end="url(#arr)"/><text class="s" x="330" y="292" text-anchor="middle">clicks SafeFill, then Fill this page</text>
+        <rect class="box-note" x="586" y="320" width="200" height="44" rx="6"/><text class="s" x="598" y="339">tab's site = ticket's site?</text><text class="m" x="598" y="356">if not: refuse, fill nothing</text>
+        <path class="ln" d="M577 390H798" marker-end="url(#arr)"/><text class="s" x="688" y="382" text-anchor="middle">POST ticket (no cookies)</text>
+        <path class="ret" d="M800 430H579" marker-end="url(#arr)"/><text class="s" x="688" y="422" text-anchor="middle">values (no-store)</text>
+        <path class="ln" d="M577 470H1058" marker-end="url(#arr)"/><text class="s" x="818" y="462" text-anchor="middle">inject rules + engine, run once</text>
+        <path class="ret" d="M1060 510H579" marker-end="url(#arr)"/><text class="s" x="818" y="502" text-anchor="middle">report: statuses and reasons, no values</text>
+        <path class="ln" d="M100 560H1058" marker-end="url(#arr)"/><text class="s" x="580" y="552" text-anchor="middle">reviews the outlined fields and submits the form herself</text>
+      </g>
+    </svg>
+    <figcaption>The ticket path uses Chrome's <code>externally_connectable</code>: only your app's origin can message the extension, and the worker checks the sender's origin again.</figcaption>
+  </figure>
+
+  <div class="block">
+    <h2>If something goes wrong, nothing is filled</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>What happens</th><th>Result</th><th>What the professional sees</th></tr></thead>
+        <tbody>
+          <tr><td>Fill pressed on a different site than the ticket's portal</td><td><span class="pill stop">Refused</span></td><td>"This request is for a different site. Nothing was filled."</td></tr>
+          <tr><td>More than 2 minutes pass before Fill is pressed</td><td><span class="pill stop">Refused</span></td><td>"The fill request expired. Start it again from the app."</td></tr>
+          <tr><td>The same ticket is used a second time</td><td><span class="pill stop">Refused</span></td><td>"No fill request." The extension drops a ticket after one use, and your backend rejects a reused one</td></tr>
+          <tr><td>Chrome stops the idle worker before Fill is pressed</td><td><span class="pill stop">Request gone</span></td><td>"No fill request." One click in the app starts a new one</td></tr>
+          <tr><td>A page from another site tries to message the extension</td><td><span class="pill stop">Not reachable</span></td><td>Chrome doesn't expose the extension to that page at all</td></tr>
+          <tr><td>Backend down or returns an unexpected shape</td><td><span class="pill stop">Refused</span></td><td>"Could not get the record from your backend. Nothing was filled."</td></tr>
+          <tr><td>Portal blocks extensions (Chrome Web Store, some intranets)</td><td><span class="pill stop">Refused</span></td><td>"This page does not allow extensions to fill it."</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted small" style="margin-top:12px">One honest limit: JavaScript cannot wipe a string from memory. What the design guarantees is that values are only held inside one function call, never in a variable that outlives the fill, and the worker itself is discarded by Chrome when idle.</p>
+  </div>
+</section>
+
+<!-- ================================================================ RELEASE -->
+<section class="panel" id="p-release" role="tabpanel" aria-labelledby="t-release" hidden>
+  <h2>From a signed tag to a verified store package</h2>
+  <p>Every release starts from a tag that carries the hash of every file and a signature from a named person. CI rebuilds from scratch and must reproduce every hash, or the release stops.</p>
+  <figure class="figure" style="margin:16px 0 0">
+    <svg class="d" viewBox="0 0 1200 290" role="img" aria-label="Release pipeline">
+        <rect class="box" x="9" y="20" width="182" height="130" rx="10"/><text class="b" x="21" y="48">Pull request</text>
+        <text class="m" x="21" y="72">build twice, compare</text>
+        <text class="m" x="21" y="90">unit + browser tests</text>
+        <text class="m" x="21" y="108">policy gate</text>
+        <text class="m" x="21" y="126">no cloud token</text>
+        <rect class="box" x="209" y="20" width="182" height="130" rx="10"/><text class="b" x="221" y="48">Main branch</text>
+        <text class="m" x="221" y="72">verify every push</text>
+        <text class="m" x="221" y="90">manual staging run</text>
+        <text class="m" x="221" y="108">short-lived token</text>
+        <text class="m" x="221" y="126">upload to staging</text>
+        <rect class="box" x="409" y="20" width="182" height="130" rx="10"/><text class="b" x="421" y="48">Signed tag</text>
+        <text class="m" x="421" y="72">message: SHA256SUMS</text>
+        <text class="m" x="421" y="90">SSH signature by a</text>
+        <text class="m" x="421" y="108">named release signer</text>
+        <rect class="box-ink" x="609" y="20" width="182" height="130" rx="10"/><text class="b" x="621" y="48">Release gate</text>
+        <text class="s" x="621" y="72">allowed signer?</text>
+        <text class="s" x="621" y="90">tag = version?</text>
+        <text class="s" x="621" y="108">rebuild matches</text>
+        <text class="s" x="621" y="126">every hash?</text>
+        <rect class="box" x="809" y="20" width="182" height="130" rx="10"/><text class="b" x="821" y="48">Web Store</text>
+        <text class="m" x="821" y="72">GitHub OIDC token</text>
+        <text class="m" x="821" y="90">via Google WIF</text>
+        <text class="m" x="821" y="108">API v2 upload</text>
+        <text class="m" x="821" y="126">no stored secret</text>
+        <rect class="box-fill" x="1009" y="20" width="182" height="130" rx="10"/><text class="b" x="1021" y="48">Published check</text>
+        <text class="s" x="1021" y="72">download what the</text>
+        <text class="s" x="1021" y="90">store serves, hash</text>
+        <text class="s" x="1021" y="108">every file, compare</text>
+        <text class="g" x="1021" y="126">to the signed tag</text>
+        <path class="ln" d="M191 85H207" marker-end="url(#arr)"/><path class="ln" d="M391 85H407" marker-end="url(#arr)"/><path class="ln" d="M591 85H607" marker-end="url(#arr)"/><path class="ln" d="M791 85H807" marker-end="url(#arr)"/><path class="ln" d="M991 85H1007" marker-end="url(#arr)"/>
+        <path class="ln-stop" d="M700 150V196" marker-end="url(#arr-stop)"/>
+        <rect class="box-stop" x="609" y="198" width="182" height="74" rx="10"/><text class="r" x="621" y="226">Release stopped</text><text class="s" x="621" y="248">names the file and</text><text class="s" x="621" y="264">both hashes</text>
+        <path class="ln-stop" d="M1100 150V235H793" marker-end="url(#arr-stop)"/><text class="r" x="830" y="228" style="font-size:13px">any unexplained difference</text>
+      </svg>
+  </figure>
+
+  <div class="block">
+    <h2>Tamper test, with real hashes</h2>
+    <p>Your browser has just fetched this site's copy of the extension build and its hash list. The hashes below are computed live with SHA-256. Change one byte, add a file or remove one, and watch the gate respond the same way CI does.</p>
+    <div class="tamper">
+      <div class="side">
+        <button class="btn quiet" id="tm-byte" type="button">Change one byte in fill-engine.js</button>
+        <button class="btn quiet" id="tm-add" type="button">Add an unexpected file</button>
+        <button class="btn quiet" id="tm-remove" type="button">Remove popup.css</button>
+        <button class="btn" id="tm-reset" type="button">Reset to the signed build</button>
+        <p class="muted small" style="margin-top:8px">Nothing leaves your browser. The hash list is the same text that goes into the signed tag message.</p>
+      </div>
+      <div>
+        <div class="verdict pass" id="tm-verdict">Computing hashes</div>
+        <div class="tablewrap"><table><thead><tr><th>File</th><th>Hash in the signed tag</th><th>Hash of this build</th><th>Result</th></tr></thead><tbody id="tm-rows"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h2>What the Web Store changes, and how the check handles it</h2>
+    <p>The store adds content-verification data (a <code>_metadata/</code> folder) to every package and may add store-managed keys such as <code>update_url</code> to the manifest. The verifier lists exactly those exceptions, prints each one it applies, and fails on anything else. I'd confirm the list on the first staging upload, which is also why that upload is scheduled early.</p>
+  </div>
+</section>
+
+<!-- ================================================================ CI -->
+<section class="panel" id="p-ci" role="tabpanel" aria-labelledby="t-ci" hidden>
+  <h2>Three trust tiers, no standing credentials</h2>
+  <p>Each workflow gets only the token its job needs, and only for minutes. A pull request never gets one at all.</p>
+  <div class="tablewrap" style="margin-top:14px">
+    <table>
+      <thead><tr><th>Lane</th><th>Runs on</th><th>Token</th><th>Identity the cloud sees</th><th>Can do</th></tr></thead>
+      <tbody>
+        <tr><td><b>Pull request</b></td><td>Every PR, including forks</td><td>None. <code>id-token</code> is not granted</td><td>Nothing to present</td><td>Build twice and compare, tests, policy gate. No cloud access of any kind</td></tr>
+        <tr><td><b>Staging</b></td><td>Manual run on main, <code>staging</code> environment (every push to main is verified)</td><td>GitHub OIDC, minutes</td><td><span class="mono subj">repo:ORG/REPO:environment:staging:job_workflow_ref:ORG/REPO/.github/workflows/staging.yml@refs/heads/main</span></td><td>Upload to the staging Web Store item; write staging artifacts</td></tr>
+        <tr><td><b>Release</b></td><td>Signed <code>v*</code> tag; gate in <code>release-gate</code>, publish in <code>release</code> with a required reviewer</td><td>GitHub OIDC, minutes</td><td><span class="mono subj">repo:ORG/REPO:environment:release:job_workflow_ref:ORG/REPO/.github/workflows/release.yml@refs/tags/v*</span></td><td>Only after the gate passes: upload and publish the production item; write release artifacts</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2>The detail that usually gets missed</h2>
+    <p>When a job uses a GitHub environment, the default OIDC subject becomes <span class="mono">repo:ORG/REPO:environment:release</span> and drops the branch or tag. A trust policy written against tags would then never match, and one written loosely would accept any workflow that reaches that environment. So I customize the subject to include the workflow file, and the cloud side checks it.</p>
+  </div>
+
+  <div class="block codegrid">
+    <div>
+      <h3>GitHub: subject claim template</h3>
+<pre>PUT /repos/ORG/REPO/actions/oidc/customization/sub
+{
+  "use_default": false,
+  "include_claim_keys": [
+    "repo", "environment", "job_workflow_ref"
+  ]
+}</pre>
+    </div>
+    <div>
+      <h3>AWS: release role trust policy</h3>
+<pre>{
+  "Effect": "Allow",
+  "Principal": { "Federated": "arn:aws:iam::ACCOUNT:oidc-provider/token.actions.githubusercontent.com" },
+  "Action": "sts:AssumeRoleWithWebIdentity",
+  "Condition": {
+    "StringEquals": {
+      "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+    },
+    "StringLike": {
+      "token.actions.githubusercontent.com:sub":
+        "repo:ORG/REPO:environment:release:job_workflow_ref:ORG/REPO/.github/workflows/release.yml@refs/tags/v*"
+    }
+  }
+}</pre>
+    </div>
+    <div>
+      <h3>Google: Web Store publishing</h3>
+<pre># Workload Identity provider, attribute condition
+assertion.repository == "ORG/REPO" &amp;&amp;
+assertion.environment == "release" &amp;&amp;
+assertion.job_workflow_ref.startsWith(
+  "ORG/REPO/.github/workflows/release.yml@refs/tags/v")
+
+# The service account is linked in the
+# Web Store dashboard; CI impersonates it
+# for a token with scope
+# https://www.googleapis.com/auth/chromewebstore</pre>
+    </div>
+  </div>
+
+  <div class="block contrast">
+    <div>
+      <h3>Rules every workflow follows</h3>
+      <ul>
+        <li>No <code>pull_request_target</code> anywhere: it runs fork code with the base repo's permissions.</li>
+        <li>Third-party actions pinned to full commit SHAs, not tags that can move.</li>
+        <li>Checkout with <code>persist-credentials: false</code>; default <code>permissions: contents: read</code>.</li>
+        <li>Test tooling installed with <code>npm ci --ignore-scripts</code>; the build itself has zero dependencies.</li>
+        <li>The list of allowed release signers comes from a protected environment only admins can edit, never from the tagged code.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>One decision for you</h3>
+      <p>A Web Store service account can manage every item under the publisher account; it cannot be limited to one item. If the staging item lives under the same publisher, the staging lane could in principle publish production.</p>
+      <p>My recommendation: put the staging item under a separate publisher account. The alternative is to skip the store for staging and test the unpacked build only.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ PLAN -->
+<section class="panel" id="p-plan" role="tabpanel" aria-labelledby="t-plan" hidden>
+  <h2>Oct 5 to Oct 15, with Nov 1 as buffer</h2>
+  <p>All 16 build steps finish by Thursday, October 15. The two and a half weeks after that cover your acceptance review, Web Store review time, and fixes, inside the same fixed price. Two written checkpoints, each with explicit actions for you.</p>
+  <div class="gantt" id="gantt" style="margin-top:16px"></div>
+  <div class="legend" id="legend"></div>
+
+  <div class="block">
+    <h2>Step by step</h2>
+    <div class="tablewrap"><table><thead><tr><th>Step</th><th>What gets built</th><th>Done when</th><th>Day</th><th>Hours</th></tr></thead><tbody id="plan-rows"></tbody></table></div>
+  </div>
+
+  <div class="block">
+    <h2>What I need from you, and when</h2>
+    <div class="tablewrap"><table><thead><tr><th>By</th><th>Action</th><th>Why</th><th>Your time</th></tr></thead><tbody id="action-rows"></tbody></table></div>
+  </div>
+
+  <div class="block">
+    <h2>The one risk I don't control</h2>
+    <p>The Chrome Web Store's first review of a new item can take several days. So the first staging upload happens on Oct 13, not at the end. If review is still pending on Oct 15, the working build is delivered unpacked with every other check passing, and the published-package check runs as soon as the store approves, well before Nov 1.</p>
+  </div>
+</section>
+
+<!-- ================================================================ QUESTIONS -->
+<section class="panel" id="p-questions" role="tabpanel" aria-labelledby="t-questions" hidden>
+  <h2>Assumptions that would change the number</h2>
+  <div class="tablewrap" style="margin-top:14px"><table><thead><tr><th>Assumption</th><th>If it turns out different</th><th>Impact</th></tr></thead><tbody id="assumption-rows"></tbody></table></div>
+
+  <div class="block">
+    <h2>Questions I'd want answered in week one</h2>
+    <ol class="qa">
+      <li><b>Do the matching rules live inside the extension, or does the backend send them per portal?</b>I default to inside: they are reviewed, hashed and signed with each release, and the backend can only send values. Backend-supplied rules need their own signing path (+10 hours).</li>
+      <li><b>Is a ticket held in the worker's memory acceptable under "stores nothing"?</b>It is an opaque token, never a value, and it disappears when Chrome stops the worker. The alternative, <code>chrome.storage.session</code>, survives worker restarts but is a storage API, so I won't use it without your sign-off.</li>
+      <li><b>Can the staging item live under a separate Web Store publisher?</b>Service-account access is publisher-wide, so separation is the only way to keep a staging token from being able to publish production.</li>
+      <li><b>Who signs release tags, and who approves the release environment?</b>Ideally two different people, so no single account can ship a release alone.</li>
+      <li><b>Do any target portals put the form inside an embedded frame from another site?</b>If so, frame support is a defined addition (+8 hours), and the report already counts frames so we will see it early.</li>
+    </ol>
+  </div>
+</section>
+</main>
+
+<footer>Everything on this page runs from the repository's build: the demo uses the extension's own files, and the tamper test hashes them live.</footer>
+<script src="doc.js"></script>
+</body>
+</html>

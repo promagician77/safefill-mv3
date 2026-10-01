@@ -1,0 +1,19 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReleaseWorkflowAtVersionTagsOnly",
+      "Effect": "Allow",
+      "Principal": { "Federated": "arn:aws:iam::ACCOUNT:oidc-provider/token.actions.githubusercontent.com" },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:ORG/REPO:environment:release:job_workflow_ref:ORG/REPO/.github/workflows/release.yml@refs/tags/v*"
+        }
+      }
+    }
+  ]
+}

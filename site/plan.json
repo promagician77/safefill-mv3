@@ -1,0 +1,371 @@
+{
+ "rate": 75,
+ "steps": [
+  {
+   "id": "S01",
+   "phase": "Release engineering",
+   "title": "Deterministic build and pinned toolchain",
+   "what": "Zero-dependency build script; Node pinned (.nvmrc, engines); LF and BOM normalization; file-type allowlist; stored zip with fixed timestamps and order",
+   "done": "Two builds on different machines produce identical SHA256SUMS and an identical zip",
+   "start": "2026-10-05",
+   "end": "2026-10-05",
+   "hours": 4,
+   "depends": "",
+   "deliverable": "scripts/build.mjs, release/SHA256SUMS",
+   "needs": "Add me to the GitHub repo, or I create it and transfer ownership to you"
+  },
+  {
+   "id": "S02",
+   "phase": "Release engineering",
+   "title": "Hash list and reproducibility check in CI",
+   "what": "sha256sum-compatible hash list; PR workflow builds twice in separate folders and compares; hash list uploaded as an artifact",
+   "done": "A PR fails if the two builds differ by a single byte",
+   "start": "2026-10-05",
+   "end": "2026-10-05",
+   "hours": 4,
+   "depends": "S01",
+   "deliverable": ".github/workflows/pr.yml",
+   "needs": ""
+  },
+  {
+   "id": "S03",
+   "phase": "CI and trust",
+   "title": "Three trust tiers with short-lived tokens",
+   "what": "PR jobs get no id-token at all; staging and release environments; required reviewer on release; OIDC sub claim customized to repo + environment + workflow file; actions pinned to commit SHAs",
+   "done": "A PR job cannot obtain any cloud token; a staging token cannot assume the release role",
+   "start": "2026-10-06",
+   "end": "2026-10-06",
+   "hours": 4,
+   "depends": "S02",
+   "deliverable": "Workflow permissions, environment settings, sub-claim config",
+   "needs": "Approve the environment and reviewer settings I send (10 minutes)"
+  },
+  {
+   "id": "S04",
+   "phase": "Release engineering",
+   "title": "Signed-tag release gate",
+   "what": "Annotated SSH-signed tag whose message is the hash list; allowed signers read from the protected release environment; tag must equal manifest version; clean rebuild compared file for file",
+   "done": "Unsigned tag, unknown key, late code change or wrong version each stop the release (automated tests)",
+   "start": "2026-10-06",
+   "end": "2026-10-06",
+   "hours": 4,
+   "depends": "S01, S03",
+   "deliverable": "scripts/verify-tag.mjs, release.yml gate job",
+   "needs": "Send the public SSH key(s) of whoever signs releases"
+  },
+  {
+   "id": "S05",
+   "phase": "Extension",
+   "title": "MV3 shell with minimum permissions",
+   "what": "Manifest with activeTab and scripting only; one host permission (your backend); CSP connect-src locked to the backend; module service worker; popup; on-demand injection, no static content scripts",
+   "done": "chrome.storage does not exist at runtime; a fetch to any other origin is blocked by CSP (browser test)",
+   "start": "2026-10-07",
+   "end": "2026-10-07",
+   "hours": 4,
+   "depends": "S01",
+   "deliverable": "extension/manifest.json, background.js, popup",
+   "needs": ""
+  },
+  {
+   "id": "S06",
+   "phase": "Extension",
+   "title": "Ticket handoff and backend fetch",
+   "what": "Web app sends a short-lived ticket via externally_connectable; sender origin checked; ticket kept in memory only; active tab must match the ticket's portal; fetch with no-store, no credentials, no redirects; response shape validated",
+   "done": "Wrong site, expired ticket and messages from other sites are refused, and nothing is filled",
+   "start": "2026-10-07",
+   "end": "2026-10-07",
+   "hours": 4,
+   "depends": "S05",
+   "deliverable": "Ticket flow + integration contract note",
+   "needs": "Ticket and fill-values API contract (from the AWS engineer)"
+  },
+  {
+   "id": "S07",
+   "phase": "Safety layer",
+   "title": "Field discovery on third-party pages",
+   "what": "Signals from labels, aria-labelledby, aria-label, placeholder, title, name/id, autocomplete; open shadow roots; visibility; fillable field kinds; embedded frames counted and reported",
+   "done": "Every field in the sample portals, including shadow DOM, is discovered with the right signals",
+   "start": "2026-10-08",
+   "end": "2026-10-08",
+   "hours": 4,
+   "depends": "S05",
+   "deliverable": "collect() in fill-engine.js",
+   "needs": "List of target portals, plus test pages or test accounts"
+  },
+  {
+   "id": "S08",
+   "phase": "Safety layer",
+   "title": "Exact-one-match-or-skip matcher",
+   "what": "Candidate set per value; two-way uniqueness (one value, one field); explicit skip reasons; matching rules frozen and shipped inside the signed extension",
+   "done": "Ambiguous, shared-field and no-match cases fill nothing (unit tests)",
+   "start": "2026-10-08",
+   "end": "2026-10-08",
+   "hours": 4,
+   "depends": "S07",
+   "deliverable": "plan() in fill-engine.js, field-rules.js",
+   "needs": ""
+  },
+  {
+   "id": "S09",
+   "phase": "Safety layer",
+   "title": "Value safety checks",
+   "what": "maxlength, pattern, input type, single matching select option, date format only when the field states it, never overwrite, read-only and disabled, passwords and files excluded, backend value format",
+   "done": "Each rule has a passing unit test that proves the skip",
+   "start": "2026-10-09",
+   "end": "2026-10-09",
+   "hours": 4,
+   "depends": "S08",
+   "deliverable": "valueFor() and rules",
+   "needs": ""
+  },
+  {
+   "id": "S10",
+   "phase": "Safety layer",
+   "title": "Fill writer and review highlights",
+   "what": "Native value setters plus input and change events (works with React and Angular forms); read-back; filled fields outlined solid, ambiguous ones dashed; clear highlights; never submits or clicks",
+   "done": "Values survive the page re-rendering; the submit counter stays at zero (browser test)",
+   "start": "2026-10-09",
+   "end": "2026-10-09",
+   "hours": 3,
+   "depends": "S08",
+   "deliverable": "write(), mark(), clearMarks()",
+   "needs": ""
+  },
+  {
+   "id": "CP1",
+   "phase": "Communication",
+   "title": "Weekly checkpoint 1 (written)",
+   "what": "What's done, what's next, decisions needed, explicit actions for you",
+   "done": "Sent Friday Oct 9",
+   "start": "2026-10-09",
+   "end": "2026-10-09",
+   "hours": 1,
+   "depends": "",
+   "deliverable": "Written update",
+   "needs": "Read and answer any decisions listed"
+  },
+  {
+   "id": "S11",
+   "phase": "Safety layer",
+   "title": "Zero-storage and zero-logging enforcement",
+   "what": "Policy gate in CI (storage, logging, submission, dynamic code, network egress, permissions, CSP); worker strips reports to statuses and reasons; errors as codes, never messages with data",
+   "done": "The gate fails on each injected violation (tests) and passes on the release build",
+   "start": "2026-10-12",
+   "end": "2026-10-12",
+   "hours": 4,
+   "depends": "S05",
+   "deliverable": "scripts/check-policy.mjs",
+   "needs": ""
+  },
+  {
+   "id": "S12",
+   "phase": "Testing",
+   "title": "Unit test suite",
+   "what": "Matcher fixtures from real portal patterns; hash list; build determinism incl. Windows line endings; zip and CRX parsing; policy gate",
+   "done": "All green in CI on every PR",
+   "start": "2026-10-12",
+   "end": "2026-10-12",
+   "hours": 4,
+   "depends": "S08, S09, S11",
+   "deliverable": "test/*.test.mjs",
+   "needs": ""
+  },
+  {
+   "id": "S13",
+   "phase": "Testing",
+   "title": "Real-browser tests",
+   "what": "Playwright on real Chromium with the exact release files; extension loaded unpacked; full ticket to fill chain against a local HTTPS mirror of the backend origin",
+   "done": "All green in CI; values never appear in the popup report",
+   "start": "2026-10-13",
+   "end": "2026-10-13",
+   "hours": 4,
+   "depends": "S10, S12",
+   "deliverable": "e2e/*.spec.mjs",
+   "needs": ""
+  },
+  {
+   "id": "S14",
+   "phase": "CI and trust",
+   "title": "Staging pipeline and Web Store upload",
+   "what": "GitHub OIDC to Google Workload Identity Federation to a service account; Chrome Web Store API v2 upload to the staging item; first submission early to start the review clock",
+   "done": "Staging upload runs from CI with no stored secret",
+   "start": "2026-10-13",
+   "end": "2026-10-13",
+   "hours": 4,
+   "depends": "S03",
+   "deliverable": "staging.yml, setup commands",
+   "needs": "Chrome Web Store developer account and item; Google Cloud project (I send the exact commands)"
+  },
+  {
+   "id": "S15",
+   "phase": "Release engineering",
+   "title": "Published-package verifier",
+   "what": "Downloads the CRX the store serves; parses CRX3; hashes every file; compares with the signed list; store additions handled by an explicit, printed allowlist",
+   "done": "Passes on the store's package; fails on any other difference (tests)",
+   "start": "2026-10-14",
+   "end": "2026-10-14",
+   "hours": 5,
+   "depends": "S04, S14",
+   "deliverable": "scripts/verify-webstore.mjs, scheduled job",
+   "needs": ""
+  },
+  {
+   "id": "S16",
+   "phase": "Docs",
+   "title": "Install procedure and runbooks",
+   "what": "Install: Web Store listing, managed install by policy, unpacked for testing; release runbook; your-side checklist",
+   "done": "Someone other than me can cut a release from the runbook",
+   "start": "2026-10-14",
+   "end": "2026-10-14",
+   "hours": 3,
+   "depends": "S15",
+   "deliverable": "docs/INSTALL.md, docs/RELEASE.md",
+   "needs": ""
+  },
+  {
+   "id": "R1",
+   "phase": "Release engineering",
+   "title": "End-to-end release dry run",
+   "what": "Sign tag, run the gate, upload to staging, verify the package",
+   "done": "One full release completes from a signed tag with no manual edits",
+   "start": "2026-10-15",
+   "end": "2026-10-15",
+   "hours": 3,
+   "depends": "S04, S14, S15",
+   "deliverable": "Dry-run log",
+   "needs": ""
+  },
+  {
+   "id": "R2",
+   "phase": "Testing",
+   "title": "Acceptance run against your written criteria",
+   "what": "Walk all 16 steps' acceptance criteria and fix anything that falls short",
+   "done": "Every criterion marked pass with evidence",
+   "start": "2026-10-15",
+   "end": "2026-10-15",
+   "hours": 3,
+   "depends": "All",
+   "deliverable": "Acceptance checklist with evidence",
+   "needs": "Review the checklist"
+  },
+  {
+   "id": "CP2",
+   "phase": "Communication",
+   "title": "Working build handover and checkpoint 2",
+   "what": "Recorded walkthrough, written update, what remains for Nov 1",
+   "done": "Working build delivered Thursday Oct 15",
+   "start": "2026-10-15",
+   "end": "2026-10-15",
+   "hours": 2,
+   "depends": "R1, R2",
+   "deliverable": "Walkthrough video + written update",
+   "needs": "Acceptance review (Oct 16 to Nov 1)"
+  }
+ ],
+ "buffer": {
+  "id": "B1",
+  "phase": "Buffer",
+  "title": "Acceptance window until the hard deadline",
+  "what": "Your review, Web Store review turnaround, fixes from acceptance. Included in the fixed price.",
+  "done": "Published, verified build by Nov 1",
+  "start": "2026-10-16",
+  "end": "2026-11-01",
+  "hours": 0,
+  "depends": "CP2",
+  "deliverable": "Final release",
+  "needs": ""
+ },
+ "actions": [
+  {
+   "date": "2026-10-05",
+   "action": "Add me to the GitHub repository (or approve my transfer of a new one)",
+   "why": "CI, environments and branch rules live there",
+   "time": "5 min"
+  },
+  {
+   "date": "2026-10-06",
+   "action": "Approve the staging and release environment settings I send, and name the release reviewer",
+   "why": "Release jobs wait for this reviewer",
+   "time": "10 min"
+  },
+  {
+   "date": "2026-10-06",
+   "action": "Send the public SSH key of each person allowed to sign releases",
+   "why": "The release gate only trusts these keys",
+   "time": "5 min"
+  },
+  {
+   "date": "2026-10-07",
+   "action": "Share the ticket and fill-values API contract (from the AWS engineer)",
+   "why": "The extension's only network call depends on it",
+   "time": "Forward a doc"
+  },
+  {
+   "date": "2026-10-08",
+   "action": "List the target portals, with test pages or test accounts if they exist",
+   "why": "Matching rules are tuned against real forms",
+   "time": "20 min"
+  },
+  {
+   "date": "2026-10-09",
+   "action": "Read checkpoint 1 and answer any decisions in it",
+   "why": "Keeps week two unblocked",
+   "time": "10 min"
+  },
+  {
+   "date": "2026-10-12",
+   "action": "Create or confirm the Chrome Web Store developer account and staging item",
+   "why": "Needed before the first upload (one-time US$5 fee)",
+   "time": "15 min"
+  },
+  {
+   "date": "2026-10-12",
+   "action": "Create a Google Cloud project, or let me run the setup commands I send",
+   "why": "Workload Identity Federation for keyless publishing",
+   "time": "15 min"
+  },
+  {
+   "date": "2026-10-15",
+   "action": "Review the working build and the acceptance checklist",
+   "why": "Starts the acceptance window",
+   "time": "1 to 2 hours"
+  }
+ ],
+ "assumptions": [
+  {
+   "assumption": "The 16 written steps match this breakdown in scope",
+   "otherwise": "Re-estimate within a day of reading them",
+   "impact": "up to +16 h"
+  },
+  {
+   "assumption": "The ticket and fill-values API exists or is stubbed by Oct 7",
+   "otherwise": "I write the contract and a stub with the AWS engineer",
+   "impact": "+6 to 8 h"
+  },
+  {
+   "assumption": "Up to about 10 target portals with ordinary HTML forms",
+   "otherwise": "Each heavily scripted or multi-step portal needs its own fixtures and rules",
+   "impact": "+2 to 4 h per portal"
+  },
+  {
+   "assumption": "Fields are in the top page or open shadow roots, not cross-origin frames",
+   "otherwise": "Frame support means per-frame injection and matching",
+   "impact": "+8 h"
+  },
+  {
+   "assumption": "Matching rules ship inside the extension (signed with each release)",
+   "otherwise": "If rules come from the backend per portal, they need their own signing and review path",
+   "impact": "+10 h"
+  },
+  {
+   "assumption": "Chrome only (Edge works from the same package)",
+   "otherwise": "Firefox needs a second manifest and build target",
+   "impact": "+12 h"
+  },
+  {
+   "assumption": "'Stores nothing' allows the in-memory ticket in the service worker",
+   "otherwise": "If even that is out, the web app must hand over the ticket at fill time",
+   "impact": "+4 h"
+  }
+ ]
+}

@@ -1,0 +1,9 @@
+# Replace ORG and team names. Branch protection on main should require
+# review from code owners.
+*                               @ORG/extension-maintainers
+/.github/                       @ORG/release-owners
+/scripts/                       @ORG/release-owners
+/infra/                         @ORG/release-owners
+/extension/manifest.json        @ORG/release-owners
+/extension/src/field-rules.js   @ORG/release-owners
+/extension/src/config.js        @ORG/release-owners

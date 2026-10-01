@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>License renewal | State Board of Nursing (sample)</title><link rel="stylesheet" href="portal.css">
+<style>header{background:#1f4e79}button{background:#1f4e79}</style></head>
+<body>
+<div class="sample">Sample portal for the SafeFill demo. Nothing on this page is sent anywhere.</div>
+<header><b>State Board of Nursing</b><small>Online license renewal, step 2 of 4</small></header>
+<main>
+<form id="form" autocomplete="off">
+  <fieldset><legend>Licensee</legend>
+    <div class="row">
+      <div class="f"><label for="first-name">First name</label><input id="first-name" name="firstName"></div>
+      <div class="f"><label for="last-name">Last name</label><input id="last-name" name="lastName"></div>
+      <div class="f"><label for="dob">Date of birth</label><input id="dob" name="dob" type="date"></div>
+      <div class="f"><label for="lic">License number</label><input id="lic" name="licenseNo"></div>
+      <div class="f"><label for="npi">NPI</label><input id="npi" name="npi" inputmode="numeric" maxlength="10"></div>
+      <div class="f"><label for="email">Email address</label><input id="email" name="email" type="email"></div>
+      <div class="f"><label for="phone">Phone</label><input id="phone" name="phone" type="tel"></div>
+    </div>
+  </fieldset>
+  <fieldset><legend>Mailing address</legend>
+    <div class="row">
+      <div class="f"><label for="street">Street address</label><input id="street" name="street"></div>
+      <div class="f"><label for="city">City</label><input id="city" name="city"></div>
+      <div class="f"><label for="state">State</label>
+        <select id="state" name="state"><option value="">Select</option><option value="AZ">Arizona</option><option value="CA">California</option><option value="NV">Nevada</option><option value="OR">Oregon</option></select></div>
+      <div class="f"><label for="zip">ZIP code</label><input id="zip" name="zip" maxlength="10"></div>
+    </div>
+  </fieldset>
+  <button type="submit">Continue</button><span id="submitted"></span>
+</form>
+</main>
+<script>
+  window.__submits = 0;
+  document.getElementById('form').addEventListener('submit', (e) => { e.preventDefault(); window.__submits++; document.getElementById('submitted').textContent = 'Submitted (sample only)'; });
+</script>
+</body></html>

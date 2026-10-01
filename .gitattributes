@@ -1,0 +1,5 @@
+# The release hashes depend on exact bytes. Keep text files LF everywhere.
+* text=auto eol=lf
+*.png binary
+*.xlsx binary
+*.zip binary

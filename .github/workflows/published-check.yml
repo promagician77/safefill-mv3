@@ -1,0 +1,28 @@
+# After the store publishes, compare what it actually serves with the signed
+# tag for that version. Runs every 6 hours; a failure is an incident.
+name: published-check
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: vars.CWS_PUBLIC_ITEM_ID != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Store package vs signed tag
+        env:
+          ITEM: ${{ vars.CWS_PUBLIC_ITEM_ID }}
+        run: node scripts/verify-webstore.mjs --item "$ITEM" --from-git

@@ -1,0 +1,24 @@
+{
+  "name": "safefill-mv3",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MV3 form-fill extension spike: exactly one match or skip, stores nothing, reproducible signed releases.",
+  "engines": {
+    "node": ">=22.12 <23"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check-policy.mjs dist",
+    "test": "node --test \"test/*.test.mjs\"",
+    "build:site": "node scripts/build-site.mjs",
+    "start": "node scripts/build.mjs && node scripts/build-site.mjs && node scripts/serve.mjs",
+    "e2e": "playwright test",
+    "tag-message": "node scripts/tag-message.mjs",
+    "verify:tag": "node scripts/verify-tag.mjs",
+    "verify:webstore": "node scripts/verify-webstore.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.0"
+  }
+}

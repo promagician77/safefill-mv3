@@ -1,0 +1,4 @@
+{
+  "use_default": false,
+  "include_claim_keys": ["repo", "environment", "job_workflow_ref"]
+}

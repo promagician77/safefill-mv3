@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Records | demo web app for SafeFill</title>
+<link rel="stylesheet" href="doc.css">
+<style>
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px var(--pad) 60px; }
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 22px 24px; margin-top: 18px; }
+  .rec { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+  .go { display: grid; gap: 10px; margin-top: 16px; }
+  .go button { justify-content: space-between; }
+  #status { margin-top: 16px; padding: 14px 16px; border-radius: 10px; background: #EEF1F5; display: none; }
+  #status.ok { display: block; background: var(--fill-soft); }
+  #status.err { display: block; background: var(--stop-soft); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="muted small">Demo web app. In production this is the React app on Cognito; here it only shows how a ticket reaches the extension.</p>
+  <h1 style="font-size:34px">Records</h1>
+  <div class="card">
+    <div class="rec"><h2 style="margin:0">Dana Whitfield, RN</h2><span class="muted">Record R-1042</span></div>
+    <p class="muted small" style="margin-top:6px">License renewal and enrollment due this month.</p>
+    <div class="go">
+      <button class="btn quiet" data-portal="/portals/portal-a.html">Fill on State Board portal</button>
+      <button class="btn quiet" data-portal="/portals/portal-b.html">Fill on Bluewater payer portal</button>
+      <button class="btn quiet" data-portal="/portals/portal-c.html">Fill on Lumen credentialing portal</button>
+    </div>
+    <div id="status" role="status"></div>
+  </div>
+  <p class="small" style="margin-top:18px"><a href="index.html#demo">Back to the technical plan</a></p>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

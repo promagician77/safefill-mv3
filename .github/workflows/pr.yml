@@ -1,0 +1,12 @@
+# Pull requests, including from forks. No id-token permission, so no job here
+# can obtain a cloud token of any kind. Never use pull_request_target.
+name: pr
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: ./.github/workflows/verify.yml

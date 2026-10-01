@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SafeFill</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header><img src="icons/icon-32.png" width="20" height="20" alt=""><h1>SafeFill</h1></header>
+<main>
+  <section id="state" aria-live="polite"><p class="muted">Checking for a fill request</p></section>
+  <div class="actions">
+    <button id="fill" type="button" disabled>Fill this page</button>
+    <button id="clear" type="button" class="quiet" hidden>Clear highlights</button>
+  </div>
+  <section id="result" hidden>
+    <p id="totals"></p>
+    <ol id="items"></ol>
+  </section>
+  <p class="note">You review every field and submit the form yourself. SafeFill never submits, stores nothing, and this report never shows your values.</p>
+</main>
+<script src="src/popup.js" type="module"></script>
+</body>
+</html>
